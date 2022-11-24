@@ -1,0 +1,18 @@
+version: 0.2
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+    commands:
+      - echo Installing packages
+      - yum install bc -y
+      - pip install pytest pylint numpy pandas
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Running style checks
+      - chmod 755 ./codebuild/lint.sh
+      - ./codebuild/lint.sh
+  post_build:
+    commands:
+      - echo Build completed on `date`

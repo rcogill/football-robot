@@ -1,0 +1,79 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+      "BucketName": {
+          "Type": "String",
+          "Default": <YOUR_BUILD_ARTIFACT_BUCKET>
+      },
+      "ObjectKey": {
+          "Type": "String",
+          "Default": "FootballRobot.zip"
+      }
+  },
+  "Resources": {
+    "FootballRobot": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": "FootballRobot",
+        "Handler": "lambda_function.lambda_handler",
+        "Role": { "Fn::GetAtt": [ "FootballRobotRole", "Arn" ] },
+        "Code": {
+          "S3Bucket": { "Ref": "BucketName" },
+          "S3Key": { "Ref": "ObjectKey" }
+        },
+        "Layers": [
+          "Fn::Sub": [
+            "arn:aws:lambda:us-east-1:${Account}:layer:Numpy_Pandas_Layer:3",
+            {"Account": {"Ref": "AWS::AccountId"}}
+          ]
+        ],
+        "Runtime": "python3.9",
+        "Timeout": 20
+      }
+    },
+    "FootballRobotRole": {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+          "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "lambda.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          },
+          "RoleName" : "FootballRobotRole",
+          "ManagedPolicyArns" : [
+            "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+            "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          ]
+      }
+    },
+    "FootballRobotSchedule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "State": "ENABLED",
+        "ScheduleExpression": "cron(0 5 * * ? *)",
+        "Targets": [
+          { 
+            "Arn": { "Fn::GetAtt": [ "FootballRobot", "Arn" ] },
+            "Id": "1"
+          }
+        ]
+      }
+    },
+    "EventBridgeLambdaPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": { "Fn::GetAtt": [ "FootballRobot", "Arn" ] },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "events.amazonaws.com",
+        "SourceArn": { "Fn::GetAtt": [ "FootballRobotSchedule", "Arn" ] }
+      }
+    }
+  }
+}
